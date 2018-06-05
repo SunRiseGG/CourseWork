@@ -1,5 +1,11 @@
 'use strict';
 
+const fs = require('fs');
+const ws = fs.createWriteStream('log.json', {'flags': 'w'});
+const concat = require('concat-stream')((data) => {
+  ws.end(JSON.stringify(data, '', 2));
+});
+
 function Transaction() {}
 
 Transaction.start = (data) => {
@@ -13,6 +19,7 @@ Transaction.start = (data) => {
     operation: 'start',
     delta: {}
   }];
+  concat.write(commitJournal[commitJournal.length - 1]);
   const emit = (name) => {
     const event = events[name];
     for (const listener of event) listener(data);
@@ -30,7 +37,7 @@ Transaction.start = (data) => {
         operation: 'commit',
         delta: obj
       });
-      console.log(commitJournal);
+      concat.write(commitJournal[commitJournal.length - 1]);
     },
     rollback: () => {
       delta = {};
@@ -40,6 +47,7 @@ Transaction.start = (data) => {
         operation: 'rollback',
         delta: {}
       });
+      concat.write(commitJournal[commitJournal.length - 1]);
     },
     clone: () => {
       const cloned = Transaction.start(data);
@@ -80,6 +88,7 @@ Transaction.start = (data) => {
         operation: 'set',
         delta: obj
       });
+      concat.write(commitJournal[commitJournal.length - 1]);
       return true;
     }
   });
@@ -105,3 +114,5 @@ transaction.city = 'Shao';
 transaction.commit();
 
 console.dir({ data });
+
+concat.end();
